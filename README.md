@@ -1,4 +1,15 @@
 # PatientSim: A Persona-Driven Simulator for Realistic Doctor-Patient Interactions 
+<a href="https://dek924.github.io/"> Daeun Kyung</a>,
+<a href="https://sites.google.com/view/thschung"> Hyunseung Chung</a>,
+<a href="https://seongsubae.info/"> Seongsu Bae</a>,
+<a href="https://jiho283.github.io/"> Jiho Kim</a>,
+<a href="https://radiology.ucsf.edu/people/jae-ho-sohn"> Jae Ho Sohn</a>,
+<a href="https://smarthealthlab.skku.edu/taerim-kim/"> Taerim Kim</a>,
+<a href="https://sites.google.com/view/soo-kyung-kim/home?authuser=0"> Soo Kyung Kim</a>,
+<a href="https://mp2893.com/"> Edward Choi</a>
+<br>
+<a href="https://neurips.cc/"> NeurIPS 2025 Datasets & Benchmarks Track (Spotlight) </a>
+
 ## Overview
 Doctor-patient consultations require multi-turn, context-aware communication tailored to diverse patient personas. 
 Training or evaluating doctor LLMs in such settings requires realistic patient interaction systems. However, existing simulators often fail to reflect the full range of personas seen in clinical practice. 
