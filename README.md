@@ -24,7 +24,7 @@ Offering a privacy-compliant environment, it serves as a robust testbed for eval
 <br />
 
 ## Updates
-- [08/21/2025] We released the official Python package of our simulator: [patientsim](https://pypi.org/project/patientsim/0.1.2/#history).
+- [08/21/2025] We released the official Python package of our simulator: [patientsim](https://pypi.org/project/patientsim).
 - [05/23/2025] We released our research paper on [arXiv](https://www.arxiv.org/abs/2505.17818).
 
 <br />
