@@ -28,7 +28,8 @@ def check_all_patterns_present(text):
 
 def detect_termination(response):
     end_flag = False
-    ddx_key = ["ddx ready:", "my top five differential diagnoses", "my top 5", "here are my top", "[ddx]", "[ddx", "here are some potential concerns we need to consider", "following differential diagnoses"]
+    ddx_key = ["ddx ready:", "my top 5", "here are my top", "[ddx]", "[ddx", "here are some potential concerns we need to consider", 
+               "differential diagnoses", "top 5 likely diagnoses", "[pddx]", "most likely possibilities", "top 5 possibilities", "top 5 likely diagnoses", "top possibilities"]
     all_present = check_all_patterns_present(response)
     end_flag = any(key.lower() in response.lower() for key in ddx_key)
     return all_present or end_flag
