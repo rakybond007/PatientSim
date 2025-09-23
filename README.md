@@ -92,11 +92,14 @@ To run a simulation with default persona and hyperparameters:
 ```
 cd src
 python run_simulation.py \
-    --exp_name "YOUR_EXP_NAME" \
-    --doctor_api_type gpt_azure \
-    --patient_api_type vllm \
-    --doctor_llm "gpt-4o-mini" \
-    --patient_llm "vllm-llama3.3-70b-instruct"
+    --config-name base \
+    experiment.exp_name "YOUR_EXP_NAME" \
+    experiment.verbose true \
+    doctor_agent.api_type=gpt_azure \
+    doctor_agent.backend=gpt-4o-mini \
+    patient_agent.api_type=vllm \
+    patient_agent.backend=vllm-llama3.3-70b-instruct \
+    patient_agent.params.temperature=0.7 \
 ```
 **Note**: Adjust LLM backbones as needed. Default hyperparameters are based on the paper's experiments.
 
@@ -105,18 +108,21 @@ python run_simulation.py \
 To customize the patient persona, use the following:
 ```
 cd src
-python run_simulation_valid.py \
-    --exp_name "YOUR_EXP_NAME" \
-    --personality_type "$personality_type" \
-    --cefr_type "$cefr_type" \
-    --recall_level_type "$recall_type" \
-    --dazed_level_type "$dazed_type" \
-    --doctor_api_type gpt_azure \
-    --patient_api_type vllm \
-    --doctor_llm "gpt-4o-mini" \
-    --patient_llm "vllm-llama3.3-70b-instruct"
+python run_simulation.py \
+    --config-name base \
+    experiment.exp_name "YOUR_EXP_NAME" \
+    experiment.verbose true \
+    doctor_agent.api_type=gpt_azure \
+    doctor_agent.backend=gpt-4o-mini \
+    patient_agent.api_type=vllm \
+    patient_agent.backend=vllm-llama3.3-70b-instruct \
+    patient_agent.params.temperature=0.7 \
+    patient_agent.persona.cefr_type=$cefr_type \
+    patient_agent.persona.personality_type=$personality_type \
+    patient_agent.persona.recall_level_option=$recall_type \
+    patient_agent.persona.dazed_level_option=$dazed_type \
 ```
-**Note**: Adjust persona types and LLM backbones as needed. Default hyperparameters are based on the paper's experiments.
+**Note**: Adjust persona types and LLM backbones as needed.
 
 <br />
 
