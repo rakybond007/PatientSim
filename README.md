@@ -32,7 +32,7 @@ Offering a privacy-compliant environment, it serves as a robust testbed for eval
 
 ## Dataset
 ### Download
-- The dataset will be provided through PhysioNet and requires a credentialed PhysioNet account (currently under review). 
+- The dataset is available through PhysioNet and requires a credentialed PhysioNet account ([link](https://physionet.org/content/persona-patientsim/1.0.0/)). 
 - Unzip the dataset in the `./src/data/final_data` folder, which is the default path for the PatientSim experiment.
 
 ### Data Preprocessing
