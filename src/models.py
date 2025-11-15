@@ -9,12 +9,10 @@ from google.genai import types
 from google.genai.types import HttpOptions
 from openai import AzureOpenAI, OpenAI
 
-load_dotenv(override=True)
-GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "./google_credentials.json")
+# load_dotenv(override=True)
+GENAI_API_KEY = os.environ.get("GENAI_API_KEY", "")
 AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY", "")
 AZURE_ENDPOINT = os.environ.get("AZURE_ENDPOINT", "")
-GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID", "")
-GOOGLE_PROJECT_LOCATION = os.environ.get("GOOGLE_PROJECT_LOCATION", "")
 PORT = os.environ.get("VLLM_PORT", "")
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "./google_credentials.json")
 
@@ -25,8 +23,8 @@ if AZURE_OPENAI_KEY != "":
         api_version="2024-10-21",
     )
 
-if GOOGLE_PROJECT_ID != "":
-    gen_client = genai.Client(vertexai=True, project=GOOGLE_PROJECT_ID, location=GOOGLE_PROJECT_LOCATION, http_options=HttpOptions(api_version="v1"))
+if GENAI_API_KEY != "":
+    gen_client = genai.Client(vertexai=True, api_key=GENAI_API_KEY, http_options=HttpOptions(api_version="v1"))
 
 time_gap = {"gpt-4": 3}
 
