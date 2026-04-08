@@ -5,13 +5,7 @@ import ast
 import json
 import copy
 import torch
-import random
 import argparse
-import numpy as np
-import pandas as pd
-
-from torch import nn
-from transformers import AutoTokenizer, AutoModel
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -67,21 +61,6 @@ def get_valid_answer_with_retries(client, messages, model, temperature, max_retr
         return None
 
 
-def get_embedding(tokenizer, model, text):
-    device = next(model.parameters()).device
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-    inputs = {key: val.to(device) for key, val in inputs.items()}
-    with torch.no_grad():
-        outputs = model(**inputs)
-    return outputs.last_hidden_state[:, 0, :]
-
-
-def compute_similarity(tokenizer, model, text1, text2, metric):
-    emb1 = get_embedding(tokenizer, model, text1)
-    emb2 = get_embedding(tokenizer, model, text2)
-    return metric(emb1, emb2)[0]
-
-
 def flatten_dict_simple(d, parent_key="", sep="_"):
     items = []
     for k, v in d.items():
@@ -101,9 +80,9 @@ def main(args):
     # Set evaluate path & setting
     result_path = os.path.join(args.result_dir, args.trg_exp_name)
 
-    # Setup the moderator
-    client = get_response_method(args.moderator_api_type)
-    model = vllm_model_setup(args.moderator) if "vllm" in args.moderator else args.moderator
+    # Setup the evaluator
+    client = get_response_method(args.evaluator_api_type)
+    model = vllm_model_setup(args.evaluator) if "vllm" in args.evaluator else args.evaluator
 
     # Load test data
     scenario_dict = load_json(os.path.join(args.data_dir, f"{args.data_file_name}.json"))
@@ -117,7 +96,7 @@ def main(args):
         # Set save path & save variables
         correct_cnt = 0
         total_ddx_result = {}
-        save_path = os.path.join(result_path, f"{args.moderator}_ddx_{args.trg_agent}.json")
+        save_path = os.path.join(result_path, f"{args.evaluator}_ddx_{args.trg_agent}.json")
         assert not os.path.isfile(save_path)
 
         # Start evaluation
@@ -167,7 +146,7 @@ def main(args):
 
         # Set save path & save variables
         total_persona_eval_result = {k: {} for k in eval_criteria_dict.keys()}
-        save_path = os.path.join(result_path, f"{args.moderator}_persona_quality_{args.trg_agent}.json")
+        save_path = os.path.join(result_path, f"{args.evaluator}_persona_quality_{args.trg_agent}.json")
         assert not os.path.isfile(save_path)
         for data in tqdm(dialogue_hists):
             # Load data per scenario
@@ -249,8 +228,71 @@ def main(args):
                 total_persona_eval_result[eval_target][scenario] = answer
 
             # Logging & save
-            save_to_json(total_persona_eval_result, save_path)
+            save_to_json(total_persona_eval_result, save_path)    
 
+
+    if args.eval_profile_consistency:
+        # Load prompt
+        system_prompt = file_to_string(os.path.join(args.prompt_dir, "eval_profile_consistency_system.txt"))
+        user_prompt_template = file_to_string(os.path.join(args.prompt_dir, "eval_profile_consistency_user.txt"))
+
+        # Set save path & save variables
+        total_consistency_eval_result = {}
+        save_path = os.path.join(result_path, f"{args.evaluator}_profile_consistency_{args.trg_agent}.json")
+
+        if not os.path.isfile(save_path):
+            # Start evaluation
+            for data in tqdm(dialogue_hists):
+                # Load data per scenario
+                scenario = data["hadm_id"]
+                dialogue = data["dialog_history"]
+                conversation = ""
+                for utter in dialogue:
+                    conversation += f"""\t{utter["role"]}: {utter["content"]}\n"""
+
+                # Set up prompt & get llm response
+                user_prompt = user_prompt_template.format(conversation=conversation)
+                messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+                response = client(messages, model=model, temperature=args.temperature, seed=args.random_seed)
+                answer = get_answer(response)
+                answer = re.search(r"\{.*\}", answer, re.DOTALL).group()
+                try:
+                    answer = json.loads(answer)
+                except:
+                    answer = answer
+
+                # Save the result
+                total_consistency_eval_result[scenario] = answer
+
+            # Logging & save
+            save_to_json(total_consistency_eval_result, save_path)
+
+        total_consistency_eval_result = load_json(save_path)
+        LLMscore_save_path = os.path.join(result_path, f"{args.evaluator}_profile_consistency_LLMscore_{args.trg_agent}.json")
+        consistency_prompt = load_json(os.path.join(args.prompt_dir, "eval_profile_consistency.json"))
+
+        LLM_SIM_result = {}
+
+        if os.path.isfile(LLMscore_save_path):
+            LLM_SIM_result = load_json(LLMscore_save_path)
+
+        for scenario, predict_dict in tqdm(total_consistency_eval_result.items()):
+            profile_data = get_profile(scenario_dict, scenario)
+            predict_dict = flatten_dict_simple(predict_dict)
+            profile_data = {k: v for k, v in profile_data.items() if k in predict_dict.keys()}
+            assert len(set(predict_dict.keys()).difference(profile_data)) == 0
+
+            if scenario not in LLM_SIM_result:
+                # LLM Sim
+                messages = deepcopy(consistency_prompt)
+                filtered_predict_dict = {k: v for k, v in predict_dict.items() if v != "Not recorded"}
+                filtered_profile_data = {k: v for k, v in profile_data.items() if k in filtered_predict_dict}
+                messages[-1]["content"] = json.dumps({"GT_profile": filtered_profile_data, "Prediction_profile": filtered_predict_dict})
+                llm_result, _ = get_valid_answer_with_retries(client, messages, model=model, temperature=args.temperature, random_seed=args.random_seed, expected_type="dict")
+                LLM_SIM_result[scenario] = llm_result
+
+                # Logging & save
+                save_to_json(LLM_SIM_result, LLMscore_save_path)
 
     if args.eval_doc_quality:
         # Load prompt
@@ -259,7 +301,7 @@ def main(args):
 
         # Set save path & save variables
         total_doc_eval_result = {k: {} for k in eval_criteria_dict.keys()}
-        save_path = os.path.join(result_path, f"{args.moderator}_doc_quality_{args.trg_agent}.json")
+        save_path = os.path.join(result_path, f"{args.evaluator}_doc_quality_{args.trg_agent}.json")
         assert not os.path.isfile(save_path)
 
         # Start evaluation
@@ -307,94 +349,10 @@ def main(args):
                 save_to_json(total_doc_eval_result, save_path)
 
 
-    if args.eval_profile_consistency:
-        # Load prompt
-        system_prompt = file_to_string(os.path.join(args.prompt_dir, "eval_profile_consistency_system.txt"))
-        user_prompt_template = file_to_string(os.path.join(args.prompt_dir, "eval_profile_consistency_user.txt"))
-
-        # Set save path & save variables
-        total_consistency_eval_result = {}
-        save_path = os.path.join(result_path, f"{args.moderator}_profile_consistency_{args.trg_agent}.json")
-
-        if not os.path.isfile(save_path):
-            # Start evaluation
-            for data in tqdm(dialogue_hists):
-                # Load data per scenario
-                scenario = data["hadm_id"]
-                dialogue = data["dialog_history"]
-                conversation = ""
-                for utter in dialogue:
-                    conversation += f"""\t{utter["role"]}: {utter["content"]}\n"""
-
-                # Set up prompt & get llm response
-                user_prompt = user_prompt_template.format(conversation=conversation)
-                messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-                response = client(messages, model=model, temperature=args.temperature, seed=args.random_seed)
-                answer = get_answer(response)
-                answer = re.search(r"\{.*\}", answer, re.DOTALL).group()
-                try:
-                    answer = json.loads(answer)
-                except:
-                    answer = answer
-
-                # Save the result
-                total_consistency_eval_result[scenario] = answer
-
-            # Logging & save
-            save_to_json(total_consistency_eval_result, save_path)
-
-        total_consistency_eval_result = load_json(save_path)
-        BERTscore_save_path = os.path.join(result_path, f"{args.moderator}_profile_consistency_BERTscore_{args.trg_agent}.json")
-        LLMscore_save_path = os.path.join(result_path, f"{args.moderator}_profile_consistency_LLMscore_{args.trg_agent}.json")
-        consistency_prompt = load_json(os.path.join(args.prompt_dir, "eval_profile_consistency.json"))
-
-        BERT_SIM_result = {}
-        LLM_SIM_result = {}
-
-        if os.path.isfile(BERTscore_save_path):
-            BERT_SIM_result = load_json(BERTscore_save_path)
-
-        if os.path.isfile(LLMscore_save_path):
-            LLM_SIM_result = load_json(LLMscore_save_path)
-
-        embedding_model_name = "emilyalsentzer/Bio_ClinicalBERT"
-        tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
-        embedding_model = AutoModel.from_pretrained(embedding_model_name).to("cuda" if torch.cuda.is_available() else "cpu")
-        for scenario, predict_dict in tqdm(total_consistency_eval_result.items()):
-            profile_data = get_profile(scenario_dict, scenario)
-            predict_dict = flatten_dict_simple(predict_dict)
-            profile_data = {k: v for k, v in profile_data.items() if k in predict_dict.keys()}
-            assert len(set(predict_dict.keys()).difference(profile_data)) == 0
-
-            if scenario not in BERT_SIM_result:
-                # BERT Sim
-                bert_result = {}
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                for eval_key in predict_dict.keys():
-                    if predict_dict[eval_key] != "Not recorded":
-                        bert_result[eval_key] = compute_similarity(tokenizer, embedding_model, str(profile_data[eval_key]), str(predict_dict[eval_key]), cos).item()
-                    else:
-                        bert_result[eval_key] = None
-                BERT_SIM_result[scenario] = bert_result
-
-            if scenario not in LLM_SIM_result:
-                # LLM Sim
-                messages = deepcopy(consistency_prompt)
-                filtered_predict_dict = {k: v for k, v in predict_dict.items() if v != "Not recorded"}
-                filtered_profile_data = {k: v for k, v in profile_data.items() if k in filtered_predict_dict}
-                messages[-1]["content"] = json.dumps({"GT_profile": filtered_profile_data, "Prediction_profile": filtered_predict_dict})
-                llm_result, _ = get_valid_answer_with_retries(client, messages, model=model, temperature=args.temperature, random_seed=args.random_seed, expected_type="dict")
-                LLM_SIM_result[scenario] = llm_result
-
-                # Logging & save
-                save_to_json(BERT_SIM_result, BERTscore_save_path)
-                save_to_json(LLM_SIM_result, LLMscore_save_path)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Medical Diagnosis Simulation CLI")
     parser.add_argument(
-        "--moderator",
+        "--evaluator",
         type=str,
         default="vllm-llama3.1-70b-instruct",
         choices=[
@@ -403,6 +361,8 @@ if __name__ == "__main__":
             "gpt-5-nano",
             "gemini-2.0-flash",
             "gemini-2.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
             "vllm-deepseek-llama-70b",
             "vllm-llama3.1-70b-instruct",
             "vllm-llama3.3-70b-instruct",
@@ -410,7 +370,7 @@ if __name__ == "__main__":
             "vllm-qwen2.5-72b-instruct",
         ],
     )
-    parser.add_argument("--moderator_api_type", type=str, default="vllm", choices=["gpt_azure", "vllm", "genai"])
+    parser.add_argument("--evaluator_api_type", type=str, default="vllm", choices=["gpt_azure", "vllm", "genai"])
     parser.add_argument("--trg_agent", type=str, default="Patient")
     parser.add_argument("--data_dir", type=str, default="./data/final_data")
     parser.add_argument("--data_file_name", type=str, default="patient_profile")
@@ -418,8 +378,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_dir", type=str, default="./results", help="save dir")
     parser.add_argument("--trg_exp_name", type=str, default="", help="save dir")
     parser.add_argument("--eval_ddx", action="store_true", help="eval ddx performance")
-    parser.add_argument("--eval_profile_consistency", action="store_true", help="eval response quality performance")
     parser.add_argument("--eval_persona_quality", action="store_true", help="eval response quality performance")
+    parser.add_argument("--eval_profile_consistency", action="store_true", help="eval response quality performance")
     parser.add_argument("--eval_doc_quality", action="store_true", help="eval response quality performance")
 
     parser.add_argument("--temperature", type=int, default=0)
