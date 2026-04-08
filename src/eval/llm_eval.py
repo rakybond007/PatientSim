@@ -4,7 +4,6 @@ import sys
 import ast
 import json
 import copy
-import torch
 import argparse
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -181,7 +180,6 @@ def main(args):
                 "Recall_level": RECALL_DICT[data["recall_level_type"]], 
                 "Dazed_level": DAZED_DICT[data["dazed_level_type"]]
             }
-            profile = get_profile(scenario_dict, scenario)
 
             conversation = ""
             for utter in dialogue[:-1]:

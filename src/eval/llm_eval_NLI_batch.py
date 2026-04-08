@@ -266,14 +266,9 @@ def main(args):
     temp_dir = os.path.join(result_path, "temp_batches") 
     os.makedirs(temp_dir, exist_ok=True)
 
-    # Setup the evaluator
-    print(f"{args.evaluator_api_type} api call")
-    client = get_response_method(args.evaluator_api_type)
-    model = vllm_model_setup(args.evaluator) if "vllm" in args.evaluator else args.evaluator
-
     # Load test data
     scenario_dict = load_json(os.path.join(args.data_dir, f"{args.data_file_name}.json"))
-    dialogue_hists = load_jsonl(os.path.join(result_path, "dialogue.jsonl"))[:1]
+    dialogue_hists = load_jsonl(os.path.join(result_path, "dialogue.jsonl"))
 
     # Evaluate only the information set
     if args.eval_target == "info":
