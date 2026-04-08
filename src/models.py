@@ -97,6 +97,23 @@ def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed
                     thinking_config=types.ThinkingConfig(thinking_budget=kwargs.get("thinking_budget", 0))
                 ),
             )
+        
+        elif model.startswith("gemini-3"):
+            return gen_client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=temperature,
+                    seed=seed,
+                    thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+                    labels={
+                        "team": "ai612",
+                        "environment": f"patientsim-{model}",
+                    },
+                ),
+            )
+        
         else:
             return gen_client.models.generate_content(
                 model=model,

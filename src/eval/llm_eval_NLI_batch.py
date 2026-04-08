@@ -134,8 +134,8 @@ def get_valid_answer_with_retries(client, messages, model, temperature, max_retr
 
 def process_batch(batch_data, args, scenario_dict, batch_idx, temp_dir):
     batch_results = {} 
-    client = get_response_method(args.moderator_api_type)
-    model = vllm_model_setup(args.moderator) if "vllm" in args.moderator else args.moderator
+    client = get_response_method(args.evaluator_api_type)
+    model = vllm_model_setup(args.evaluator) if "vllm" in args.evaluator else args.evaluator
     batch_save_path = os.path.join(temp_dir, f"batch_{batch_idx}.json")
     if os.path.exists(batch_save_path):
         batch_results = load_json(batch_save_path)
@@ -266,10 +266,10 @@ def main(args):
     temp_dir = os.path.join(result_path, "temp_batches") 
     os.makedirs(temp_dir, exist_ok=True)
 
-    # Setup the moderator
-    print(f"{args.moderator_api_type} api call")
-    client = get_response_method(args.moderator_api_type)
-    model = vllm_model_setup(args.moderator) if "vllm" in args.moderator else args.moderator
+    # Setup the evaluator
+    print(f"{args.evaluator_api_type} api call")
+    client = get_response_method(args.evaluator_api_type)
+    model = vllm_model_setup(args.evaluator) if "vllm" in args.evaluator else args.evaluator
 
     # Load test data
     scenario_dict = load_json(os.path.join(args.data_dir, f"{args.data_file_name}.json"))
@@ -280,7 +280,7 @@ def main(args):
         scenario_dict = [subdict for subdict in scenario_dict if subdict["split"] == "info"]
 
     # Eval NLI task
-    save_path = os.path.join(result_path, f"{args.moderator}_nli.json")
+    save_path = os.path.join(result_path, f"{args.evaluator}_nli.json")
     if os.path.isfile(save_path):
         total_nli_result = load_json(save_path)
     else:
@@ -305,7 +305,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Medical Diagnosis Simulation CLI")
     parser.add_argument(
-        "--moderator",
+        "--evaluator",
         type=str,
         default="vllm-llama3.1-70b-instruct",
         choices=[
@@ -314,13 +314,15 @@ if __name__ == "__main__":
             "gpt-5-nano",
             "gemini-2.0-flash",
             "gemini-2.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
             "vllm-deepseek-llama-70b",
             "vllm-llama3.1-70b-instruct",
             "vllm-llama3.3-70b-instruct",
             "vllm-qwen2.5-72b-instruct",
         ],
     )
-    parser.add_argument("--moderator_api_type", type=str, default="vllm", choices=["gpt_azure", "vllm", "genai"])
+    parser.add_argument("--evaluator_api_type", type=str, default="vllm", choices=["gpt_azure", "vllm", "genai"])
     parser.add_argument("--data_dir", type=str, default="./data/final_data")
     parser.add_argument("--data_file_name", type=str, default="patient_profile")
     parser.add_argument("--eval_target", type=str, default="info", choices=["info", "all"])
