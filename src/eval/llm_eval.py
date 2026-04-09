@@ -138,10 +138,29 @@ def main(args):
 
     if args.eval_persona_quality:
         # Load prompt
-        user_prompt_template = file_to_string(os.path.join(args.prompt_dir, "eval_dialogue_user.txt"))
         user_prompt_template_w_persona = file_to_string(os.path.join(args.prompt_dir, "eval_dialogue_user_w_persona.txt"))
-        user_prompt_template_w_profile = file_to_string(os.path.join(args.prompt_dir, "eval_dialogue_user_w_profile.txt"))
         eval_criteria_dict = load_json(os.path.join(args.prompt_dir, "llm_eval_metrics_persona.json"))
+        
+        CEFR_DICT = {
+            "A": "Beginner. Can make simple sentences.",
+            "B": "Intermediate. Can have daily conversations.",
+            "C": "Advanced. Can freely use even advanced medical terms.",
+        }
+
+        PERSONALITY_DICT = {
+            "plain": "Neutral. No strong emotions or noticeable behavior.",
+            "verbose": "Talkative Speaks a lot, and provides highly detailed responses.",
+            "distrust": "Distrustful. Questions the doctor’s expertise and care.",
+            "pleasing": "Pleasing. Overly positive and tend to minimize their problems.",
+            "impatient": "Impatient. Easily irritated and lacks patience.",
+            "overanxious": "Overanxious. Expresses concern beyond what is typical.",
+        }
+
+        RECALL_DICT = {"low": "Low. Often forgetting even major medical history.", "high": "High. Usually recalls their medical history accurately."}
+        DAZED_DICT = {
+            "normal": "Clear mental status, with naturally reflect their own persona.",
+            "high": "Initially highly dazed and confused, struggles with conversation. With the doctor's reassurance, their dazedness subsides to a normal state.",
+        }
 
         # Set save path & save variables
         total_persona_eval_result = {k: {} for k in eval_criteria_dict.keys()}
@@ -152,27 +171,6 @@ def main(args):
             scenario = data["hadm_id"]
             dialogue = data["dialog_history"]
             dazed_level = data["dazed_level_type"]
-
-            CEFR_DICT = {
-                "A": "Beginner. Can make simple sentences.",
-                "B": "Intermediate. Can have daily conversations.",
-                "C": "Advanced. Can freely use even advanced medical terms.",
-            }
-
-            PERSONALITY_DICT = {
-                "plain": "Neutral. No strong emotions or noticeable behavior.",
-                "verbose": "Talkative Speaks a lot, and provides highly detailed responses.",
-                "distrust": "Distrustful. Questions the doctor’s expertise and care.",
-                "pleasing": "Pleasing. Overly positive and tend to minimize their problems.",
-                "impatient": "Impatient. Easily irritated and lacks patience.",
-                "overanxious": "Overanxious. Expresses concern beyond what is typical.",
-            }
-
-            RECALL_DICT = {"low": "Low. Often forgetting even major medical history.", "high": "High. Usually recalls their medical history accurately."}
-            DAZED_DICT = {
-                "normal": "Clear mental status, with naturally reflect their own persona.",
-                "high": "Initially highly dazed and confused, struggles with conversation. With the doctor's reassurance, their dazedness subsides to a normal state.",
-            }
 
             persona_prompt = {
                 "Personality": PERSONALITY_DICT[data["personality_type"]],
