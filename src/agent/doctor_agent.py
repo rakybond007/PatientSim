@@ -6,7 +6,7 @@ from models import get_response_method, vllm_model_setup, get_answer, get_token_
 
 
 class DoctorAgent:
-    def __init__(self, max_infs=15, top_k_diagnosis=5, backend_str="gpt4", backend_api_type="gpt_azure",  prompt_dir=None, prompt_file=None, patient_info=None, client_params=None, verbose=False) -> None:
+    def __init__(self, max_infs=15, top_k_diagnosis=5, backend_str="gpt4", backend_api_type="gpt_azure",  prompt_dir=None, prompt_file=None, patient_info=None, client_params=None, verbose=False, medical_memory: str = "") -> None:
         self.prompt_dir = prompt_dir
         self.prompt_file = prompt_file
         self.infs = 0  # number of inference calls to the doctor
@@ -17,6 +17,7 @@ class DoctorAgent:
         self.patient_info = patient_info if patient_info is not None else {}
         self.client_params = client_params if client_params is not None else {}
         self.verbose = verbose
+        self.medical_memory = medical_memory or "(none yet)"
         
         self.client = get_response_method(self.backend_api_type)
         self.model = vllm_model_setup(self.backend) if self.backend_api_type == "vllm" else self.backend
@@ -36,7 +37,7 @@ class DoctorAgent:
 
     def system_prompt(self) -> str:
         system_prompt = self.system_prompt_text.format(
-            total_idx=self.max_infs, curr_idx=self.infs, remain_idx=self.max_infs - self.infs, top_k_diagnosis=self.top_k_diagnosis, **self.patient_info
+            total_idx=self.max_infs, curr_idx=self.infs, remain_idx=self.max_infs - self.infs, top_k_diagnosis=self.top_k_diagnosis, medical_memory=self.medical_memory, **self.patient_info
         )
         prompt_valid_check(system_prompt, self.patient_info)
         return system_prompt

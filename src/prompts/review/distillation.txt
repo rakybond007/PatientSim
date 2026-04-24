@@ -1,0 +1,25 @@
+You maintain a physician's accumulated clinical wisdom notebook. Each entry is a concise, actionable lesson learned from past consultations, organized by rubric category.
+
+EXISTING NOTEBOOK (may be empty on first call)
+{current_distilled}
+
+A past consultation is being archived. Absorb its key lessons into the notebook.
+ARCHIVED CONSULTATION
+  Patient context: {patient_context}
+  Ground-truth diagnosis: {gt_diagnosis}
+  Scores: {scores}
+  Questioning strategy: {questioning_strategy}
+  Identified errors: {identified_errors}
+  Key lessons extracted: {key_lessons}
+  Evaluator summary: {summary}
+
+UPDATE RULES
+- Organize under exactly these five headings: History Taking, Differential Diagnosis, Clinical Communication, Safety & Risk, Diagnosis & Management.
+- Each bullet: imperative voice, under 20 words (e.g. "Always ask about anticoagulant use before ordering contrast imaging.").
+- Merge duplicate / near-duplicate lessons; prefer the more specific wording.
+- Prioritize lessons derived from low-scoring (≤3) categories of the archived consultation.
+- Keep the notebook compact: aim for ≤6 bullets per heading total.
+- Drop stale, overly-specific lessons if they contradict accumulated evidence from multiple cases.
+
+OUTPUT
+Return ONLY the full updated notebook text (plain markdown with the five headings). No commentary, no code fences.
