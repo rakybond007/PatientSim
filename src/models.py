@@ -9,11 +9,17 @@ from google.genai import types
 from google.genai.types import HttpOptions
 from openai import AzureOpenAI, OpenAI
 
-# load_dotenv(override=True)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(REPO_ROOT, ".env"), override=False)
+load_dotenv(os.path.join(REPO_ROOT, ".env.local"), override=True)
+
 GENAI_API_KEY = os.environ.get("GENAI_API_KEY", "")
+GOOGLE_GENAI_USE_VERTEXAI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "False")
 AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY", "")
 AZURE_ENDPOINT = os.environ.get("AZURE_ENDPOINT", "")
 PORT = os.environ.get("VLLM_PORT", "")
+LITELLM_API_KEY = os.environ.get("LITELLM_API_KEY", "")
+LITELLM_API_BASE = os.environ.get("LITELLM_API_BASE", "")
 
 if AZURE_OPENAI_KEY != "":
     azure_client = AzureOpenAI(
@@ -23,7 +29,11 @@ if AZURE_OPENAI_KEY != "":
     )
 
 if GENAI_API_KEY != "":
-    gen_client = genai.Client(vertexai=True, api_key=GENAI_API_KEY, http_options=HttpOptions(api_version="v1"))
+    use_vertexai = str(GOOGLE_GENAI_USE_VERTEXAI).strip().lower() in ["1", "true", "yes", "y", "on"]
+    if use_vertexai:
+        gen_client = genai.Client(vertexai=True, api_key=GENAI_API_KEY, http_options=HttpOptions(api_version="v1"))
+    else:
+        gen_client = genai.Client(api_key=GENAI_API_KEY)
 
 time_gap = {"gpt-4": 3}
 
@@ -73,6 +83,8 @@ def gpt_azure_response(message: list, model="gpt-4o", temperature=0, seed=42, **
 
 
 def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed=42, **kwargs):
+    if GENAI_API_KEY == "":
+        raise ValueError("GENAI_API_KEY is not set.")
     time.sleep(time_gap.get(model, 3))
     system_prompt = message[0]["content"] if message[0]["role"] == "system" else None
     if system_prompt:
@@ -81,7 +93,8 @@ def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed
         contents = message
 
     try:
-        contents = [{"role": item["role"], "parts": [{"text": item["content"]}]} for item in contents]
+        role_map = {"assistant": "model", "user": "user"}
+        contents = [{"role": role_map.get(item["role"], item["role"]), "parts": [{"text": item["content"]}]} for item in contents]
     except:
         raise NotImplementedError
 
@@ -191,10 +204,39 @@ def vllm_response(message: list, model=None, temperature=0, seed=42, **kwargs):
         return vllm_response(message, model, temperature, seed)
 
 
+def litellm_response(message: list, model=None, temperature=0, seed=42, **kwargs):
+    if LITELLM_API_KEY == "":
+        raise ValueError("LITELLM_API_KEY is not set.")
+    if LITELLM_API_BASE == "":
+        raise ValueError("LITELLM_API_BASE is not set. Example: http://localhost:4000/v1")
+
+    seed = kwargs.pop("random_seed", seed)
+    litellm_client = OpenAI(api_key=LITELLM_API_KEY, base_url=LITELLM_API_BASE)
+    time.sleep(time_gap.get(model, 3))
+
+    try:
+        return litellm_client.chat.completions.create(
+            model=model,
+            messages=message,
+            temperature=temperature,
+            seed=seed,
+            **kwargs,
+        )
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "context" in error_msg or "length" in error_msg or "maximum context length" in error_msg:
+            if isinstance(message, list) and len(message) > 2:
+                message = [message[0]] + message[2:]
+        print(e)
+        time.sleep(time_gap.get(model, 3) * 2)
+        return litellm_response(message, model, temperature, seed, **kwargs)
+
+
 def get_response_method(model):
     response_methods = {
         "gpt_azure": gpt_azure_response,
         "vllm": vllm_response,
         "genai": gemini_response,
+        "litellm": litellm_response,
     }
-    return response_methods.get(model.split("-")[0], lambda _: NotImplementedError())
+    return response_methods.get(model, response_methods.get(model.split("-")[0], lambda _: NotImplementedError()))

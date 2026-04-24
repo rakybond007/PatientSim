@@ -82,7 +82,6 @@ def main(cfg):
         # Start dialogue
         start_time = time.time()
         dialog_history = [{"role": "Doctor", "content": doctor_agent.doctor_greet}]
-        doctor_agent.messages.append({"role": "assistant", "content": f"{doctor_agent.doctor_greet}"})
         logging.info(f"Doctor: {doctor_agent.doctor_greet}")
 
         for inf_idx in range(cfg.experiment.total_inferences):

@@ -60,6 +60,10 @@ conda activate patientsim
 # Install required packages
 pip install -r requirements.txt
 ```
+On macOS/Apple Silicon, install the API/LiteLLM dependency set instead. The full `requirements.txt` includes `vllm`, which is intended for Linux GPU servers:
+```
+pip install -r requirements-lite.txt
+```
 
 ### API Setup
 Set API credentials depending on which provider you’re using. 
@@ -76,13 +80,26 @@ export OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 export AZURE_OPENAI_KEY="YOUR_AZURE_OPENAI_KEY"
 export AZURE_ENDPOINT="YOUR_AZURE_ENDPOINT"
 
-# For Gemini API with Vertex AI
+# For Gemini API key mode (no Vertex OAuth)
 export GENAI_API_KEY="YOUR_API_KEY"
-export GOOGLE_GENAI_USE_VERTEXAI="True"
+export GOOGLE_GENAI_USE_VERTEXAI="False"
+
+# For Gemini with Vertex AI
+# export GOOGLE_GENAI_USE_VERTEXAI="True"
 
 # For vLLM serving model
 export VLLM_PORT="YOUR_VLLM_PORT"
+
+# For LiteLLM proxy
+export LITELLM_API_KEY="YOUR_LITELLM_API_KEY"
+export LITELLM_API_BASE="YOUR_LITELLM_PROXY_URL/v1"
 ```
+
+You can also store credentials in a local file instead of exporting them every time:
+```
+cp .env.example .env.local
+```
+Then edit `.env.local`. The code automatically loads `.env` and `.env.local` from the repository root, and `.env.local` overrides `.env`.
 
 ### vLLM setting
 Start the vLLM server:
@@ -114,6 +131,21 @@ python run_simulation.py \
     patient_agent.params.temperature=0.7 \
 ```
 **Note**: Adjust LLM backbones as needed. Default hyperparameters are based on the paper's experiments.
+
+### LiteLLM Proxy Settings (Optional)
+To route either agent through a LiteLLM proxy, set `api_type=litellm` and use the model name configured in your LiteLLM proxy:
+```
+cd src
+python run_simulation.py \
+    --config-name base \
+    experiment.exp_name "YOUR_EXP_NAME" \
+    experiment.verbose true \
+    doctor_agent.api_type=litellm \
+    doctor_agent.backend=gpt-4o-mini \
+    patient_agent.api_type=litellm \
+    patient_agent.backend=gpt-4o-mini \
+    patient_agent.params.temperature=0.7
+```
 
 
 ### Custom Persona Settings (Optional)

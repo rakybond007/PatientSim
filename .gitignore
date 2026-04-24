@@ -3,3 +3,8 @@ __pycache__
 data
 results
 google_credentials.json
+.env
+.env.local
+
+.DS_Store
+ML4H 2026 Phase 1 Proposal _Team7.pdf
