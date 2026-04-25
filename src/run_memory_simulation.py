@@ -41,23 +41,36 @@ from utils import set_seed, detect_termination, save_to_dialogue
 
 # ------------------------------ scenario selection ------------------------------
 
-def pick_same_type(profiles, diagnosis, k, rng):
-    pool = [p for p in profiles if p.get("diagnosis") == diagnosis]
-    rng.shuffle(pool)
-    return pool[:k]
-
-
-def pick_cross_type(profiles, k, rng):
+def _apply_filters(profiles, filter_diagnosis=None, filter_recall=None, filter_personality=None, filter_cefr=None):
     pool = list(profiles)
+    if filter_diagnosis:
+        pool = [p for p in pool if p.get("diagnosis") == filter_diagnosis]
+    if filter_recall:
+        pool = [p for p in pool if p.get("recall_level") == filter_recall]
+    if filter_personality:
+        pool = [p for p in pool if p.get("personality") == filter_personality]
+    if filter_cefr:
+        pool = [p for p in pool if p.get("cefr") == filter_cefr]
+    return pool
+
+
+def pick_same_type(profiles, diagnosis, k, rng, **filters):
+    pool = _apply_filters(profiles, filter_diagnosis=diagnosis, **filters)
     rng.shuffle(pool)
     return pool[:k]
 
 
-def pick_zero_shot(profiles, train_dx, target_dx, k_train, rng):
-    train_pool = [p for p in profiles if p.get("diagnosis") == train_dx]
+def pick_cross_type(profiles, k, rng, **filters):
+    pool = _apply_filters(profiles, **filters)
+    rng.shuffle(pool)
+    return pool[:k]
+
+
+def pick_zero_shot(profiles, train_dx, target_dx, k_train, rng, **filters):
+    train_pool = _apply_filters(profiles, filter_diagnosis=train_dx, **filters)
     rng.shuffle(train_pool)
     train = train_pool[:k_train]
-    target_pool = [p for p in profiles if p.get("diagnosis") == target_dx]
+    target_pool = _apply_filters(profiles, filter_diagnosis=target_dx, **filters)
     rng.shuffle(target_pool)
     target = target_pool[:1]
     return train + target
@@ -152,6 +165,17 @@ def main():
     parser.add_argument("--doctor-temperature", type=float, default=0.7)
     parser.add_argument("--patient-temperature", type=float, default=0.7)
     parser.add_argument("--verbose", action="store_true")
+    # Persona / recall filters (apply within the chosen mode)
+    parser.add_argument("--filter-recall", choices=["low", "high"], default=None,
+                        help="Restrict scenarios to a recall level (low/high). Filters Q2 hypothesis cohorts.")
+    parser.add_argument("--filter-personality", default=None,
+                        help="Restrict scenarios to a single personality (plain/verbose/distrust/pleasing/impatient/overanxious).")
+    parser.add_argument("--filter-cefr", choices=["A", "B", "C"], default=None,
+                        help="Restrict scenarios to a CEFR language proficiency tier.")
+    parser.add_argument("--memory-init", default=None,
+                        help="Path to a memory.json snapshot to pre-load. Useful for transfer experiments.")
+    parser.add_argument("--memory-read-only", action="store_true",
+                        help="Inject memory but do not append/distill new records.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -174,15 +198,20 @@ def main():
         profiles = json.load(f)
 
     # Scenario selection
+    extra_filters = {
+        "filter_recall": args.filter_recall,
+        "filter_personality": args.filter_personality,
+        "filter_cefr": args.filter_cefr,
+    }
     if args.mode == "same_type":
-        scenarios = pick_same_type(profiles, args.diagnosis, args.num_scenarios, rng)
+        scenarios = pick_same_type(profiles, args.diagnosis, args.num_scenarios, rng, **extra_filters)
     elif args.mode == "cross_type":
-        scenarios = pick_cross_type(profiles, args.num_scenarios, rng)
+        scenarios = pick_cross_type(profiles, args.num_scenarios, rng, **extra_filters)
     elif args.mode == "zero_shot":
         k_train = max(args.num_scenarios - 1, 1)
-        scenarios = pick_zero_shot(profiles, args.diagnosis, args.target_diagnosis, k_train, rng)
+        scenarios = pick_zero_shot(profiles, args.diagnosis, args.target_diagnosis, k_train, rng, **extra_filters)
     elif args.mode == "no_memory":
-        scenarios = pick_cross_type(profiles, args.num_scenarios, rng)
+        scenarios = pick_cross_type(profiles, args.num_scenarios, rng, **extra_filters)
     else:
         raise ValueError(f"unknown mode: {args.mode}")
 
@@ -197,6 +226,10 @@ def main():
         prompt_dir=args.prompt_dir_review,
         verbose=args.verbose,
     )
+    if args.memory_init and os.path.isfile(args.memory_init):
+        import shutil
+        shutil.copy(args.memory_init, memory_path)
+        logging.info(f"Pre-loaded memory from {args.memory_init}")
     memory = MedicalMemoryStore(path=memory_path, window_size=args.memory_window)
     agent_cfg = {
         "doctor_backend": args.doctor_backend,
