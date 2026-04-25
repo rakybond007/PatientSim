@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import json
 import datetime
@@ -82,7 +83,23 @@ def gpt_azure_response(message: list, model="gpt-4o", temperature=0, seed=42, **
         return gpt_azure_response(model=model, messages=message, temperature=temperature, seed=seed, **kwargs)
 
 
-def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed=42, **kwargs):
+_GEMINI_MAX_RETRIES = 5
+_GEMINI_BASE_BACKOFF_S = 5
+_GEMINI_QUOTA_BACKOFF_S = 35  # Vertex AI 429s typically ask for 30s+
+
+
+def _parse_retry_delay(err_str: str, default_s: float) -> float:
+    """Best-effort extraction of retryDelay from Vertex AI 429 error payload."""
+    m = re.search(r"retryDelay['\"]?\s*:\s*['\"]?(\d+)(?:\.(\d+))?s", err_str)
+    if m:
+        try:
+            return float(m.group(1)) + (float("0." + m.group(2)) if m.group(2) else 0)
+        except Exception:
+            pass
+    return default_s
+
+
+def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed=42, _attempt=0, **kwargs):
     if GENAI_API_KEY == "":
         raise ValueError("GENAI_API_KEY is not set.")
     time.sleep(time_gap.get(model, 3))
@@ -110,7 +127,7 @@ def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed
                     thinking_config=types.ThinkingConfig(thinking_budget=kwargs.get("thinking_budget", 0))
                 ),
             )
-        
+
         elif model.startswith("gemini-3"):
             return gen_client.models.generate_content(
                 model=model,
@@ -126,7 +143,7 @@ def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed
                     },
                 ),
             )
-        
+
         else:
             return gen_client.models.generate_content(
                 model=model,
@@ -139,13 +156,27 @@ def gemini_response(message: list, model="gemini-2.0-flash", temperature=0, seed
             )
 
     except Exception as e:
-        error_msg = str(e).lower()
-        if "context" in error_msg or "length" in error_msg or 'maximum context length' in error_msg:
+        err_str = str(e)
+        err_lower = err_str.lower()
+
+        # Truncate context on length-related errors and let retry continue.
+        if "context" in err_lower or "length" in err_lower or "maximum context length" in err_lower:
             if isinstance(message, list) and len(message) > 2:
                 message = [message[0]] + message[2:]
-        print(e)
-        time.sleep(time_gap.get(model, 3) * 2)
-        return gemini_response(message, model, temperature, seed, **kwargs)
+
+        # Bounded retry. Without this, a 429 caused unbounded recursion that
+        # kept hammering the same quota window across parallel processes.
+        if _attempt + 1 >= _GEMINI_MAX_RETRIES:
+            print(f"[gemini_response] giving up after {_attempt+1} attempts: {err_str[:200]}")
+            raise
+
+        if "429" in err_str or "resource_exhausted" in err_lower or "quota" in err_lower:
+            wait = _parse_retry_delay(err_str, _GEMINI_QUOTA_BACKOFF_S * (2 ** _attempt))
+        else:
+            wait = _GEMINI_BASE_BACKOFF_S * (2 ** _attempt)
+        print(f"[gemini_response] attempt {_attempt+1}/{_GEMINI_MAX_RETRIES} failed; sleeping {wait:.1f}s. err={err_str[:200]}")
+        time.sleep(wait)
+        return gemini_response(message, model, temperature, seed, _attempt=_attempt + 1, **kwargs)
 
 
 def vllm_model_setup(model):
