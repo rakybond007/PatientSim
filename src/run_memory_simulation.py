@@ -96,7 +96,7 @@ def run_single_consultation(scenario, memory_text, args, prompt_dirs, agent_cfg)
     )
 
     doctor_prompt_file = (
-        "initial_system_doctor_with_memory" if memory_text else "initial_system_doctor"
+        agent_cfg["doctor_prompt_file_mem"] if memory_text else agent_cfg["doctor_prompt_file_base"]
     )
     doctor_agent = DoctorAgent(
         max_infs=args.total_inferences,
@@ -176,6 +176,12 @@ def main():
                         help="Path to a memory.json snapshot to pre-load. Useful for transfer experiments.")
     parser.add_argument("--memory-read-only", action="store_true",
                         help="Inject memory but do not append/distill new records.")
+    parser.add_argument("--doctor-prompt-file-base", default="initial_system_doctor",
+                        help="Doctor system-prompt template file (without .txt) for the no-memory case. "
+                             "Use 'novice_doctor' for an intern-level baseline.")
+    parser.add_argument("--doctor-prompt-file-mem", default="initial_system_doctor_with_memory",
+                        help="Doctor system-prompt template file (without .txt) for the with-memory case. "
+                             "Use 'novice_doctor_with_memory' to pair with novice baseline.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -238,6 +244,8 @@ def main():
         "patient_api_type": args.patient_api_type,
         "doctor_temperature": args.doctor_temperature,
         "patient_temperature": args.patient_temperature,
+        "doctor_prompt_file_base": args.doctor_prompt_file_base,
+        "doctor_prompt_file_mem": args.doctor_prompt_file_mem,
     }
     prompt_dirs = {"simulation": args.prompt_dir_sim, "review": args.prompt_dir_review}
 
