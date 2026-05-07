@@ -1,0 +1,31 @@
+You are evaluating a single ED consultation dialog. The patient has a documented base persona (their underlying disposition before any prior healthcare experience). Your job is to score how far this dialog DEVIATES from a "fresh" expression of that base persona.
+
+A score of 0 means the patient sounds like a first-time-ever-visiting version of this base persona — no signs that prior consultations have changed them. A score of 10 means the patient sounds heavily marked by accumulated prior healthcare experience (sarcasm, references to prior care, defeat, repaired trust, etc.) on top of the base persona.
+
+CALIBRATION ANCHORS (read carefully, then score consistently)
+- 0–1: dialog is indistinguishable from a fresh first visit; only base-persona traits visible.
+- 2–3: minor signs of accumulation (one stray hedge or "again", but no clear trauma / sarcasm / prior-care reference).
+- 4–6: moderate accumulation — patient spontaneously refers to prior visits OR shows sarcasm/defeat OR uses traumatized language, but only briefly.
+- 7–8: strong accumulation — multiple prior-care references, sustained sarcasm or defeat, trauma narration.
+- 9–10: dialog is dominated by accumulated post-experience tone; the base persona is barely audible underneath.
+
+Also report which DIRECTION the deviation runs:
+- "negative" — patient is more guarded / distrustful / defeated / sarcastic / withdrawn than a fresh baseline.
+- "positive" — patient is more trusting / open / relaxed / forthcoming than a fresh baseline.
+- "mixed" — both signals present.
+- "none" — no meaningful deviation.
+
+OUTPUT — return ONLY a JSON object (no fences, no commentary):
+
+{
+  "deviation_score": <int 0-10>,
+  "direction": "negative" | "positive" | "mixed" | "none",
+  "evidence": ["<short patient quote>", "<short patient quote>", "<short patient quote>"],
+  "rationale": "<2-3 sentence explanation grounded in the dialog>"
+}
+
+Rules
+- Use ONLY what is in the dialog. Do not infer from the base persona description more than necessary.
+- Pick `evidence` from actual patient utterances, ≤25 words each.
+- Be calibrated, not generous. 8+ requires unambiguous and sustained signals.
+- No markdown, no extra fields.
