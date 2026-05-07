@@ -1,0 +1,36 @@
+You are evaluating how strongly a patient's persona traits were *expressed* in a single ED consultation. This is the dependent variable for our persona-evolution experiments — we are NOT scoring clinical quality, we are quantifying how visibly the patient acted out each personality / interpersonal trait.
+
+For each axis below, rate 0-10 based ONLY on the patient's utterances in the dialog:
+
+AXES (rate 0-10 each, higher = stronger expression of that trait)
+1. distrust — questioning the doctor's competence, demanding evidence, refusing reassurances, suspicious tone.
+2. pleasing — minimizing symptoms, downplaying severity, telling the doctor what they want to hear, "I'm fine".
+3. impatience — irritation at slow questioning, abrupt answers, complaints about waiting / process.
+4. overanxiousness — excessive worry, catastrophizing, naming feared diagnoses, requesting excessive workup.
+5. verbosity — long, tangential answers, oversharing unrelated history, going off-topic.
+6. guardedness — withholding information unless directly pressed, short non-answers, evasiveness.
+7. resignation — low energy, "I don't know", "it doesn't matter", giving up.
+8. directness — stating symptoms bluntly without softening, willing to volunteer relevant details.
+
+OUTPUT — return ONLY a JSON object (no fences, no commentary):
+
+{
+  "scores": {
+    "distrust": <int 0-10>,
+    "pleasing": <int 0-10>,
+    "impatience": <int 0-10>,
+    "overanxiousness": <int 0-10>,
+    "verbosity": <int 0-10>,
+    "guardedness": <int 0-10>,
+    "resignation": <int 0-10>,
+    "directness": <int 0-10>
+  },
+  "dominant_trait": "<single label, the highest-scoring trait>",
+  "evidence": ["<short patient quote 1>", "<short patient quote 2>", "<short patient quote 3>"]
+}
+
+Rules
+- Score 0 if the trait is not visible at all in the dialog.
+- Pick `evidence` from actual patient utterances, ≤20 words each.
+- Be calibrated, not generous: 8+ should be unambiguous, sustained expression.
+- No markdown, no extra fields.

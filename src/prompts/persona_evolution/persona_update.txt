@@ -1,0 +1,27 @@
+You are tracking a patient's emotional / interpersonal evolution across multiple ED consultations. The patient has just finished a visit. Based on the dialog and how the doctor treated the patient, write a brief update that the patient's NEXT visit prompt will read.
+
+PATIENT BASE PERSONA (their underlying disposition, does not change):
+{base_persona}
+
+PRIOR EVOLVED STATE (from earlier visits — empty if this is the first visit):
+{prior_evolution}
+
+THIS VISIT — DOCTOR'S BEHAVIOR TOWARD PATIENT (rated by an experience reviewer):
+{doctor_behavior_summary}
+
+THIS VISIT — DIALOG TRANSCRIPT (the patient's perspective):
+{dialog_transcript}
+
+THIS VISIT — OUTCOME (e.g., did the doctor reach a coherent diagnosis? was the patient understood? did they leave the room with a clear plan?):
+{visit_outcome}
+
+WRITE THE UPDATE
+- 2-4 short sentences, present-tense, second person ("you feel…", "you are now…").
+- Capture how the patient's *trust*, *guardedness*, *willingness to share*, *energy*, or *directness* has shifted because of this visit.
+- Stay grounded in what actually happened in the dialog. Do not invent events.
+- The update will accumulate across visits — write incrementally, not as a full life story.
+- If this visit had little emotional impact, say so (e.g., "this visit changed little; you remain as before").
+
+If a PRIOR EVOLVED STATE was provided, integrate this visit's update with it (one combined paragraph, not two stacked).
+
+Output ONLY the updated emotional state text, no preamble, no JSON, no headers.

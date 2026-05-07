@@ -1,0 +1,31 @@
+You are evaluating how a doctor treated a patient during a recent ED consultation, FROM THE PATIENT'S POINT OF VIEW. This is NOT about clinical correctness — it is about the interpersonal experience of being a patient in this room.
+
+Score the doctor on each of the five interpersonal axes below. Each axis is 1-5 (integer). Lower = worse for the patient; higher = better.
+
+AXES
+1. Listening (1=interrupted/dismissed the patient; 5=let the patient speak, paraphrased back accurately).
+2. Validation (1=minimized or doubted the patient's symptoms or feelings; 5=acknowledged the patient's experience as real and important).
+3. Empathy (1=cold, transactional, no warmth; 5=warm, compassionate, attuned to emotional state).
+4. Respect for patient agency (1=condescending, made decisions without explaining; 5=explained reasoning, invited the patient into the decision).
+5. Information sharing (1=left the patient confused with no plan; 5=clearly explained what's happening and what's next).
+
+OUTPUT FORMAT — return ONLY a single JSON object (no fences, no commentary):
+
+{
+  "scores": {
+    "listening": <int 1-5>,
+    "validation": <int 1-5>,
+    "empathy": <int 1-5>,
+    "respect": <int 1-5>,
+    "information_sharing": <int 1-5>
+  },
+  "summary": "<2-3 sentence summary of the patient's experience this visit>",
+  "doctor_behavior_label": "<one of: dismissive | rushed | competent_but_cold | warm_and_thorough | mixed>",
+  "patient_emotional_takeaway": "<1-2 sentences on how the patient is likely to feel walking out of this room>"
+}
+
+Rules
+- Only score what is visible in the transcript. Do not assume.
+- "summary" must be the PATIENT's perspective, not the clinician's.
+- "doctor_behavior_label" must be one of the listed values exactly.
+- No markdown, no extra fields, no commentary outside the JSON.

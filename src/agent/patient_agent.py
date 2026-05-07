@@ -21,6 +21,7 @@ class PatientAgent:
         dazed_level_type=None,
         client_params=None,
         verbose=False,
+        persona_evolution: str = "",
     ):
         self.prompt_dir = prompt_dir
         self.prompt_file = prompt_file
@@ -120,6 +121,11 @@ class PatientAgent:
         )
         self.patient_profile["reminder"] += " " + self.bias_prompt_dict["dazed_level"][self.dazed_level_type].split("\n\t")[0]
         self.patient_profile["sent_limit"] = self.sentence_limit[self.personality_type] if self.personality_type is not None else "3"
+
+        # Persona evolution (optional, used by Option 2 multi-visit experiments).
+        # Falsy values become a neutral "no prior visits" string so the prompt template still renders.
+        self.persona_evolution = persona_evolution or ""
+        self.patient_profile["persona_evolution"] = self.persona_evolution if self.persona_evolution else "(this is your first ED visit ever; no prior visits have shaped your emotional state.)"
 
         # Load prompt text file
         prompt_file = self.prompt_file
