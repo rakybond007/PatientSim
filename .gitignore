@@ -8,3 +8,12 @@ google_credentials.json
 
 .DS_Store
 ML4H 2026 Phase 1 Proposal _Team7.pdf
+
+# Generated artifacts (figures, reports, experiment outputs, docs) — local only
+figures/
+docs/
+*.docx
+~$*
+src/results/
+scripts/build_final_report.py
+scripts/build_final_report.sh
