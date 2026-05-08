@@ -17,3 +17,5 @@ docs/
 src/results/
 scripts/build_final_report.py
 scripts/build_final_report.sh
+scripts/build_short_report.py
+scripts/build_short_report.sh
